@@ -17,7 +17,7 @@ go install github.com/loafoe/prometheus-hsdp-metrics-exporter@latest
 ### Set credentials
 
 ```shell
-export UAA_NAME=your-uaa-username
+export UAA_USERNAME=your-uaa-username
 export UAA_PASSWORD=your-uaa-password
 ```
 
