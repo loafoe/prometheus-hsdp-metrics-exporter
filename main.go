@@ -34,10 +34,21 @@ var (
 		"hsdp_instance_name",
 		"space_id",
 	})
+	rdsDatabaseConnectionsMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: metricNamePrefix + "rds_database_connections_average",
+		Help: "The average number of database connections",
+	}, []string{
+		"broker_id",
+		"dbinstance_identifier",
+		"hsdp_instance_guid",
+		"hsdp_instance_name",
+		"space_id",
+	})
 )
 
 func init() {
 	registry.MustRegister(rdsCPUMetric)
+	registry.MustRegister(rdsDatabaseConnectionsMetric)
 }
 
 type metric struct {
@@ -99,6 +110,7 @@ func main() {
 			for _, instance := range *instances {
 				fmt.Printf("Instance: %+v\n", instance.GUID)
 				now := time.Now().Unix()
+				// CPU
 				data, _, err := uaaClient.Metrics.PrometheusGetData(ctx, instance.Details.Hostname,
 					"(aws_rds_cpuutilization_average) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})",
 					console.WithStart(now),
@@ -133,7 +145,41 @@ func main() {
 						m.SpaceId,
 					).Set(floatValue(value))
 				}
-
+				// Connections
+				data, _, err = uaaClient.Metrics.PrometheusGetData(ctx, instance.Details.Hostname,
+					"(aws_rds_database_connections_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})",
+					console.WithStart(now),
+					console.WithEnd(now),
+					console.WithStep(14))
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+					continue
+				}
+				for _, r := range data.Data.Result {
+					var m metric
+					err := json.Unmarshal(r.Metric, &m)
+					if err != nil {
+						continue
+					}
+					if len(r.Values) == 0 {
+						continue
+					}
+					val := r.Values[0]
+					if len(val) < 2 {
+						continue
+					}
+					when := val[0].(float64)
+					value := val[1].(string)
+					fmt.Printf("  Metrics: %+v\n", m)
+					fmt.Printf("  Values: %f,%s\n", when, value)
+					rdsDatabaseConnectionsMetric.WithLabelValues(
+						m.BrokerId,
+						m.DBInstanceIdentifier,
+						m.HsdpInstanceGuid,
+						m.HsdpInstanceName,
+						m.SpaceId,
+					).Set(floatValue(value))
+				}
 			}
 		}
 	}()
