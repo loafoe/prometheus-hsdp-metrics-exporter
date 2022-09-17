@@ -1,4 +1,4 @@
-module metrics
+module github.com/loafoe/prometheus-hsdp-metrics-exporter
 
 go 1.19
 
