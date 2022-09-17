@@ -74,6 +74,10 @@ func main() {
 		Region:   region,
 		DebugLog: debugLog,
 	})
+	if err != nil {
+		fmt.Printf("Error setting up console client: %v\n", err)
+		return
+	}
 	err = uaaClient.Login(uaaUsername, uaaPassword)
 	if err != nil {
 		fmt.Printf("Error logging into UAA: %v\n", err)
