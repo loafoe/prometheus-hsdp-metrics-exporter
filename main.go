@@ -19,7 +19,7 @@ import (
 var region string
 var listenAddr string
 var debugLog string
-var metricNamePrefix = "hsdp_metric_"
+var metricNamePrefix = "hsdp_metrics_"
 
 var (
 	registry = prometheus.NewRegistry()
