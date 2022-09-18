@@ -3,7 +3,7 @@ module github.com/loafoe/prometheus-hsdp-metrics-exporter
 go 1.19
 
 require (
-	github.com/philips-software/go-hsdp-api v0.74.0
+	github.com/philips-software/go-hsdp-api v0.74.1
 	github.com/prometheus/client_golang v1.13.0
 )
 

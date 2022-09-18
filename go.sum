@@ -204,6 +204,8 @@ github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRW
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/philips-software/go-hsdp-api v0.74.0 h1:G23XWLdXtRGaa1l+7ULX7Tv26ASywKUiNxOwvZpc8Ok=
 github.com/philips-software/go-hsdp-api v0.74.0/go.mod h1:3ObppzQEA9Wiot0ly1avZxYXC0eYECRsLxyvFZjwujU=
+github.com/philips-software/go-hsdp-api v0.74.1 h1:h16Ii6Lbc8E36qyzpJmMr61nayovi2feuHH5sR938cE=
+github.com/philips-software/go-hsdp-api v0.74.1/go.mod h1:3ObppzQEA9Wiot0ly1avZxYXC0eYECRsLxyvFZjwujU=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

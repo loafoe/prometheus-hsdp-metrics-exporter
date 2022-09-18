@@ -81,8 +81,8 @@ func main() {
 		hsdp.WithHelp("Average write operations"),
 		hsdp.WithQuery("(aws_rds_write_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 
-	registry.MustRegister(rdsCPMetric.Collector)
-	registry.MustRegister(rdsDatabaseConnectionsMetric.Collector)
+	registry.MustRegister(rdsCPMetric)
+	registry.MustRegister(rdsDatabaseConnectionsMetric)
 	registry.MustRegister(rdsFreeStorageMetric)
 	registry.MustRegister(rdsFreeableMemoryMetric)
 	registry.MustRegister(rdsReadIOPSMetric)
