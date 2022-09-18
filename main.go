@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
+	"github.com/loafoe/prometheus-hsdp-metrics-exporter/hsdp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -19,53 +18,6 @@ import (
 var region string
 var listenAddr string
 var debugLog string
-var metricNamePrefix = "hsdp_metrics_"
-
-var (
-	registry = prometheus.NewRegistry()
-
-	rdsCPUMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: metricNamePrefix + "rds_cpu_average",
-		Help: "HSDP RDS database CPU utilization average",
-	}, []string{
-		"broker_id",
-		"dbinstance_identifier",
-		"hsdp_instance_guid",
-		"hsdp_instance_name",
-		"space_id",
-	})
-	rdsDatabaseConnectionsMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: metricNamePrefix + "rds_database_connections_average",
-		Help: "The average number of database connections",
-	}, []string{
-		"broker_id",
-		"dbinstance_identifier",
-		"hsdp_instance_guid",
-		"hsdp_instance_name",
-		"space_id",
-	})
-)
-
-func init() {
-	registry.MustRegister(rdsCPUMetric)
-	registry.MustRegister(rdsDatabaseConnectionsMetric)
-}
-
-type metric struct {
-	BrokerId             string `json:"broker_id"`
-	DBInstanceIdentifier string `json:"dbinstance_identifier"`
-	ExportedJob          string `json:"exported_job"`
-	HsdpInstanceGuid     string `json:"hsdp_instance_guid"`
-	HsdpInstanceName     string `json:"hsdp_instance_name"`
-	Instance             string `json:"instance"`
-	Job                  string `json:"job"`
-	SpaceId              string `json:"space_id"`
-}
-
-func floatValue(input string) (fval float64) {
-	fval, _ = strconv.ParseFloat(input, 64)
-	return
-}
 
 func main() {
 	flag.StringVar(&debugLog, "debuglog", "", "The debug log to dump traffic in")
@@ -96,6 +48,46 @@ func main() {
 	}
 	ctx := context.Background()
 
+	registry := prometheus.NewRegistry()
+
+	rdsCPMetric, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_cpu_average"),
+		hsdp.WithHelp("HSDP RDS database CPU utilization average"),
+		hsdp.WithQuery("(aws_rds_cpuutilization_average) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+	rdsDatabaseConnectionsMetric, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_database_connections_average"),
+		hsdp.WithHelp("The average number of database connections"),
+		hsdp.WithQuery("(aws_rds_database_connections_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+	rdsFreeStorageMetric, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_free_storage_space_average"),
+		hsdp.WithHelp("The average free storage space"),
+		hsdp.WithQuery("(aws_rds_free_storage_space_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+	rdsFreeableMemoryMetric, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_freeable_memory_average"),
+		hsdp.WithHelp("The average freeable memory"),
+		hsdp.WithQuery("(aws_rds_freeable_memory_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+	rdsReadIOPSMetric, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_read_iops_average"),
+		hsdp.WithHelp("The average read operations"),
+		hsdp.WithQuery("(aws_rds_read_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+	rdsWriteOPSMetrics, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("rds_write_iops_average"),
+		hsdp.WithHelp("Average write operations"),
+		hsdp.WithQuery("(aws_rds_write_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+
+	registry.MustRegister(rdsCPMetric.Collector)
+	registry.MustRegister(rdsDatabaseConnectionsMetric.Collector)
+	registry.MustRegister(rdsFreeStorageMetric)
+	registry.MustRegister(rdsFreeableMemoryMetric)
+	registry.MustRegister(rdsReadIOPSMetric)
+	registry.MustRegister(rdsWriteOPSMetrics)
+
 	go func() {
 		sleep := false
 		for {
@@ -109,77 +101,12 @@ func main() {
 			}
 			for _, instance := range *instances {
 				fmt.Printf("Instance: %+v\n", instance.GUID)
-				now := time.Now().Unix()
-				// CPU
-				data, _, err := uaaClient.Metrics.PrometheusGetData(ctx, instance.Details.Hostname,
-					"(aws_rds_cpuutilization_average) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})",
-					console.WithStart(now),
-					console.WithEnd(now),
-					console.WithStep(14))
-				if err != nil {
-					fmt.Printf("Error: %v\n", err)
-					continue
-				}
-				for _, r := range data.Data.Result {
-					var m metric
-					err := json.Unmarshal(r.Metric, &m)
-					if err != nil {
-						continue
-					}
-					if len(r.Values) == 0 {
-						continue
-					}
-					val := r.Values[0]
-					if len(val) < 2 {
-						continue
-					}
-					when := val[0].(float64)
-					value := val[1].(string)
-					fmt.Printf("  Metrics: %+v\n", m)
-					fmt.Printf("  Values: %f,%s\n", when, value)
-					rdsCPUMetric.WithLabelValues(
-						m.BrokerId,
-						m.DBInstanceIdentifier,
-						m.HsdpInstanceGuid,
-						m.HsdpInstanceName,
-						m.SpaceId,
-					).Set(floatValue(value))
-				}
-				// Connections
-				data, _, err = uaaClient.Metrics.PrometheusGetData(ctx, instance.Details.Hostname,
-					"(aws_rds_database_connections_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})",
-					console.WithStart(now),
-					console.WithEnd(now),
-					console.WithStep(14))
-				if err != nil {
-					fmt.Printf("Error: %v\n", err)
-					continue
-				}
-				for _, r := range data.Data.Result {
-					var m metric
-					err := json.Unmarshal(r.Metric, &m)
-					if err != nil {
-						continue
-					}
-					if len(r.Values) == 0 {
-						continue
-					}
-					val := r.Values[0]
-					if len(val) < 2 {
-						continue
-					}
-					when := val[0].(float64)
-					value := val[1].(string)
-					fmt.Printf("  Metrics: %+v\n", m)
-					fmt.Printf("  Values: %f,%s\n", when, value)
-					rdsDatabaseConnectionsMetric.WithLabelValues(
-						m.BrokerId,
-						m.DBInstanceIdentifier,
-						m.HsdpInstanceGuid,
-						m.HsdpInstanceName,
-						m.SpaceId,
-					).Set(floatValue(value))
-				}
+				_ = rdsCPMetric.Update(ctx, instance)
+				_ = rdsDatabaseConnectionsMetric.Update(ctx, instance)
+				_ = rdsFreeStorageMetric.Update(ctx, instance)
+				_ = rdsFreeableMemoryMetric.Update(ctx, instance)
+				_ = rdsReadIOPSMetric.Update(ctx, instance)
+				_ = rdsWriteOPSMetrics.Update(ctx, instance)
 			}
 		}
 	}()
