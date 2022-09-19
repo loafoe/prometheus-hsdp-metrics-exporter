@@ -81,12 +81,26 @@ func main() {
 		hsdp.WithHelp("Average write operations"),
 		hsdp.WithQuery("(aws_rds_write_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 
+	s3BucketSizeMetrics, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("s3_bucket_size"),
+		hsdp.WithHelp("The total bucket size"),
+		hsdp.WithQuery("(s3_bucket_size)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+
+	s3ObjectsMetrics, _ := hsdp.NewMetric(
+		hsdp.WithClient(uaaClient),
+		hsdp.WithName("s3_objects"),
+		hsdp.WithHelp("The total number of objects in the bucket"),
+		hsdp.WithQuery("(s3_objects)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
+
 	registry.MustRegister(rdsCPMetric)
 	registry.MustRegister(rdsDatabaseConnectionsMetric)
 	registry.MustRegister(rdsFreeStorageMetric)
 	registry.MustRegister(rdsFreeableMemoryMetric)
 	registry.MustRegister(rdsReadIOPSMetric)
 	registry.MustRegister(rdsWriteOPSMetrics)
+	registry.MustRegister(s3BucketSizeMetrics)
+	registry.MustRegister(s3ObjectsMetrics)
 
 	go func() {
 		sleep := false
@@ -107,6 +121,8 @@ func main() {
 				_ = rdsFreeableMemoryMetric.Update(ctx, instance)
 				_ = rdsReadIOPSMetric.Update(ctx, instance)
 				_ = rdsWriteOPSMetrics.Update(ctx, instance)
+				_ = s3BucketSizeMetrics.Update(ctx, instance)
+				_ = s3ObjectsMetrics.Update(ctx, instance)
 			}
 		}
 	}()
