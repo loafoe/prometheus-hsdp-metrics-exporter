@@ -52,21 +52,25 @@ func main() {
 
 	rdsCPMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("rds"),
 		hsdp.WithName("rds_cpu_average"),
 		hsdp.WithHelp("HSDP RDS database CPU utilization average"),
 		hsdp.WithQuery("(aws_rds_cpuutilization_average) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 	rdsDatabaseConnectionsMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("rds"),
 		hsdp.WithName("rds_database_connections_average"),
 		hsdp.WithHelp("The average number of database connections"),
 		hsdp.WithQuery("(aws_rds_database_connections_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 	rdsFreeStorageMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("rds"),
 		hsdp.WithName("rds_free_storage_space_average"),
 		hsdp.WithHelp("The average free storage space"),
 		hsdp.WithQuery("(aws_rds_free_storage_space_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 	rdsFreeableMemoryMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("rds"),
 		hsdp.WithName("rds_freeable_memory_average"),
 		hsdp.WithHelp("The average freeable memory"),
 		hsdp.WithQuery("(aws_rds_freeable_memory_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -77,18 +81,21 @@ func main() {
 		hsdp.WithQuery("(aws_rds_read_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 	rdsWriteOPSMetrics, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("rds"),
 		hsdp.WithName("rds_write_iops_average"),
 		hsdp.WithHelp("Average write operations"),
 		hsdp.WithQuery("(aws_rds_write_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 
 	s3BucketSizeMetrics, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("s3"),
 		hsdp.WithName("s3_bucket_size"),
 		hsdp.WithHelp("The total bucket size"),
 		hsdp.WithQuery("(s3_bucket_size)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 
 	s3ObjectsMetrics, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
+		hsdp.WithService("s3"),
 		hsdp.WithName("s3_objects"),
 		hsdp.WithHelp("The total number of objects in the bucket"),
 		hsdp.WithQuery("(s3_objects)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))

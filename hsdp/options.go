@@ -29,3 +29,10 @@ func WithQuery(query string) OptionFunc {
 		return nil
 	}
 }
+
+func WithService(service string) OptionFunc {
+	return func(m *Metric) error {
+		m.service = service
+		return nil
+	}
+}

@@ -14,10 +14,11 @@ import (
 type Metric struct {
 	prometheus.Collector
 	Updater
-	name   string
-	help   string
-	query  string
-	client *console.Client
+	name    string
+	help    string
+	query   string
+	service string
+	client  *console.Client
 }
 
 type OptionFunc func(m *Metric) error
@@ -31,6 +32,7 @@ type metricLabels struct {
 	Instance             string `json:"instance"`
 	Job                  string `json:"job"`
 	SpaceId              string `json:"space_id"`
+	Service              string `json:"service,omitempty"`
 }
 
 func floatValue(input string) (fval float64) {
@@ -76,6 +78,7 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 			m.HsdpInstanceGuid,
 			m.HsdpInstanceName,
 			m.SpaceId,
+			metrics.service,
 		).Set(floatValue(value))
 	}
 	return nil
@@ -99,6 +102,7 @@ func NewMetric(opts ...OptionFunc) (*Metric, error) {
 		"hsdp_instance_guid",
 		"hsdp_instance_name",
 		"space_id",
+		"service",
 	})
 	m.Collector = gaugeVec
 	m.Updater = gaugeVec
