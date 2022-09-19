@@ -92,7 +92,7 @@ func main() {
 		sleep := false
 		for {
 			if sleep {
-				time.Sleep(time.Second * 15)
+				time.Sleep(time.Second * 30)
 			}
 			sleep = true
 			instances, err := uaaClient.Metrics.GQLGetInstances(ctx)
