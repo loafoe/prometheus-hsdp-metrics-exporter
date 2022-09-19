@@ -18,6 +18,7 @@ type Metric struct {
 	help    string
 	query   string
 	service string
+	region  string
 	client  *console.Client
 }
 
@@ -29,6 +30,8 @@ type metricLabels struct {
 	ExportedJob          string `json:"exported_job"`
 	HsdpInstanceGuid     string `json:"hsdp_instance_guid"`
 	HsdpInstanceName     string `json:"hsdp_instance_name"`
+	HsdpServiceName      string `json:"hsdp_service_name,omitempty"`
+	HsdpInstanceNodeName string `json:"hsdp_instance_node_name,omitempty"`
 	Instance             string `json:"instance"`
 	Job                  string `json:"job"`
 	SpaceId              string `json:"space_id"`
@@ -79,6 +82,7 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 			m.HsdpInstanceName,
 			m.SpaceId,
 			metrics.service,
+			metrics.region,
 		).Set(floatValue(value))
 	}
 	return nil
@@ -103,6 +107,7 @@ func NewMetric(opts ...OptionFunc) (*Metric, error) {
 		"hsdp_instance_name",
 		"space_id",
 		"service",
+		"region",
 	})
 	m.Collector = gaugeVec
 	m.Updater = gaugeVec

@@ -36,3 +36,10 @@ func WithService(service string) OptionFunc {
 		return nil
 	}
 }
+
+func WithRegion(region string) OptionFunc {
+	return func(m *Metric) error {
+		m.region = region
+		return nil
+	}
+}
