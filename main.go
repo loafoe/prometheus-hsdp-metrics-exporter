@@ -21,7 +21,7 @@ var debugLog string
 
 func main() {
 	flag.StringVar(&debugLog, "debuglog", "", "The debug log to dump traffic in")
-	flag.StringVar(&region, "region", "eu-west", "The HSDP region to use")
+	flag.StringVar(&region, "region", "us-east", "The HSDP region to use")
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:8889", "Listen address for HTTP metrics")
 	flag.Parse()
 
@@ -32,11 +32,16 @@ func main() {
 		debugLog = os.Getenv("DEBUG_LOG")
 	}
 
+	if envRegion := os.Getenv("HSDP_REGION"); region != "" {
+		region = envRegion
+	}
+
 	if uaaUsername == "" || uaaPassword == "" {
 		fmt.Printf("missing UAA_USERNAME or UAA_PASSWORD environment values\n")
 		os.Exit(1)
 	}
 
+	fmt.Printf("connecting to HSDP region %s\n", region)
 	uaaClient, err := console.NewClient(nil, &console.Config{
 		Region:   region,
 		DebugLog: debugLog,
