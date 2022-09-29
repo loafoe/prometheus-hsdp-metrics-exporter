@@ -28,6 +28,10 @@ func main() {
 	uaaUsername := os.Getenv("UAA_USERNAME")
 	uaaPassword := os.Getenv("UAA_PASSWORD")
 
+	if debugLog == "" {
+		debugLog = os.Getenv("DEBUG_LOG")
+	}
+
 	if uaaUsername == "" || uaaPassword == "" {
 		fmt.Printf("missing UAA_USERNAME or UAA_PASSWORD environment values\n")
 		os.Exit(1)
@@ -129,7 +133,11 @@ func main() {
 			sleep = true
 			instances, err := uaaClient.Metrics.GQLGetInstances(ctx)
 			if err != nil {
+				fmt.Printf("error fetching instances: %v\n", err)
 				continue
+			}
+			if len(*instances) == 0 {
+				fmt.Printf("no metrics instances found\n")
 			}
 			for _, instance := range *instances {
 				fmt.Printf("Instance: %+v\n", instance.GUID)
