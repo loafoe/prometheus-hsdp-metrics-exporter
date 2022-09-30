@@ -13,14 +13,16 @@ import (
 )
 
 type Metric struct {
-	*cache.Cache
+	cache *cache.Cache
 	prometheus.Collector
+	metricVec *prometheus.MetricVec
 	Updater
 	name    string
 	help    string
 	query   string
 	service string
 	region  string
+	prune   int
 	client  *console.Client
 }
 
@@ -40,13 +42,48 @@ type metricLabels struct {
 	Service              string `json:"service,omitempty"`
 }
 
-func floatValue(input string) (fval float64) {
-	fval, _ = strconv.ParseFloat(input, 64)
+type cacheItem struct {
+	labels     metricLabels
+	lastUpdate time.Time
+}
+
+func (m *metricLabels) Key() string {
+	return "hsdp_instance_guid"
+}
+
+func (m *metricLabels) Value() string {
+	return m.HsdpInstanceGuid
+}
+
+func floatValue(input string) (fVal float64) {
+	fVal, _ = strconv.ParseFloat(input, 64)
 	return
 }
 
 type Updater interface {
 	WithLabelValues(lvs ...string) prometheus.Gauge
+}
+
+func (metrics *Metric) Prune() {
+	// Clean up
+	items := metrics.cache.Items()
+	for key, entry := range items {
+		item, ok := entry.Object.(cacheItem)
+		if !ok {
+			continue
+		}
+		prune := time.Duration(time.Duration(metrics.prune) * time.Second).Seconds()
+		if stale := time.Now().Sub(item.lastUpdate).Seconds(); stale > prune { // Prune
+			deleted := metrics.metricVec.DeletePartialMatch(map[string]string{
+				item.labels.Key(): item.labels.Value(),
+			})
+			fmt.Printf("Deleted %d instance(s): %s:%s, metric: %s (%f > %f)\n", deleted, item.labels.Key(), item.labels.Value(), metrics.name, stale, prune)
+			// Remove from cache
+			metrics.cache.Delete(key)
+		} else {
+			//fmt.Printf("Staleness %f <= %f,  %s -> %s, metric: %s\n", stale, prune, key, item.labels.Value(), metrics.name)
+		}
+	}
 }
 
 func (metrics *Metric) Update(ctx context.Context, instance console.Instance) error {
@@ -57,6 +94,7 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 		console.WithStart(now),
 		console.WithEnd(now),
 		console.WithStep(14))
+
 	if err != nil {
 		return err
 	}
@@ -73,10 +111,10 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 		if len(val) < 2 {
 			return fmt.Errorf("too few values received")
 		}
-		when := val[0].(float64)
+		_ = val[0].(float64)
 		value := val[1].(string)
-		fmt.Printf("  Metric: %+v\n", m)
-		fmt.Printf("  Values: %f,%s\n", when, value)
+		//fmt.Printf("  Metric: %+v\n", m)
+		//fmt.Printf("  Values: %f,%s\n", when, value)
 		metrics.WithLabelValues(
 			m.BrokerId,
 			m.DBInstanceIdentifier,
@@ -86,6 +124,17 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 			metrics.service,
 			metrics.region,
 		).Set(floatValue(value))
+		// Update cache
+		_, stored := metrics.cache.Get(m.Value())
+		if !stored {
+			fmt.Printf("Adding new instance %s %s\n", m.Value(), metrics.name)
+		} else {
+			//fmt.Printf("Updating instance metrics %s %s\n", m.Value(), metrics.name)
+		}
+		metrics.cache.Set(m.Value(), cacheItem{
+			labels:     m,
+			lastUpdate: time.Now(),
+		}, -1)
 	}
 	return nil
 }
@@ -113,7 +162,16 @@ func NewMetric(opts ...OptionFunc) (*Metric, error) {
 	})
 	m.Collector = gaugeVec
 	m.Updater = gaugeVec
-	m.Cache = cache.New(720*time.Minute, 1440*time.Minute)
+	m.metricVec = gaugeVec.MetricVec
+	m.cache = cache.New(720*time.Minute, 1440*time.Minute)
+
+	// Start pruner
+	go func() {
+		tick := time.Tick(time.Duration(m.prune) * time.Second)
+		for range tick {
+			m.Prune() // Clear any stale metrics first
+		}
+	}()
 
 	return m, nil
 }

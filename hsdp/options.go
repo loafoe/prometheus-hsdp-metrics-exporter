@@ -43,3 +43,10 @@ func WithRegion(region string) OptionFunc {
 		return nil
 	}
 }
+
+func WithPrune(prune int) OptionFunc {
+	return func(m *Metric) error {
+		m.prune = prune
+		return nil
+	}
+}

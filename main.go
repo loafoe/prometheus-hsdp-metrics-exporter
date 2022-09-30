@@ -18,11 +18,16 @@ import (
 var region string
 var listenAddr string
 var debugLog string
+var refresh int
+var prune int
 
 func main() {
 	flag.StringVar(&debugLog, "debuglog", "", "The debug log to dump traffic in")
 	flag.StringVar(&region, "region", "us-east", "The HSDP region to use")
 	flag.StringVar(&listenAddr, "listen", "0.0.0.0:8889", "Listen address for HTTP metrics")
+	flag.IntVar(&refresh, "refresh", 30, "The time to wait between refreshes")
+	flag.IntVar(&prune, "prune", 120, "The time to wait before pruning stale instances")
+
 	flag.Parse()
 
 	uaaUsername := os.Getenv("UAA_USERNAME")
@@ -41,7 +46,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("connecting to HSDP region %s\n", region)
+	fmt.Printf("Connecting to HSDP region %s as %s\n", region, uaaUsername)
 	uaaClient, err := console.NewClient(nil, &console.Config{
 		Region:   region,
 		DebugLog: debugLog,
@@ -64,6 +69,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_cpu_average"),
 		hsdp.WithHelp("HSDP RDS database CPU utilization average"),
 		hsdp.WithQuery("(aws_rds_cpuutilization_average) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -71,6 +77,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_database_connections_average"),
 		hsdp.WithHelp("The average number of database connections"),
 		hsdp.WithQuery("(aws_rds_database_connections_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -78,6 +85,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_free_storage_space_average"),
 		hsdp.WithHelp("The average free storage space"),
 		hsdp.WithQuery("(aws_rds_free_storage_space_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -85,6 +93,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_freeable_memory_average"),
 		hsdp.WithHelp("The average freeable memory"),
 		hsdp.WithQuery("(aws_rds_freeable_memory_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -92,6 +101,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_read_iops_average"),
 		hsdp.WithHelp("The average read operations"),
 		hsdp.WithQuery("(aws_rds_read_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -99,6 +109,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rds"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rds_write_iops_average"),
 		hsdp.WithHelp("Average write operations"),
 		hsdp.WithQuery("(aws_rds_write_iops_average)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -108,6 +119,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("s3"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("s3_bucket_size"),
 		hsdp.WithHelp("The total bucket size"),
 		hsdp.WithQuery("(s3_bucket_size)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -116,6 +128,7 @@ func main() {
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("s3"),
 		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("s3_objects"),
 		hsdp.WithHelp("The total number of objects in the bucket"),
 		hsdp.WithQuery("(s3_objects)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -133,7 +146,7 @@ func main() {
 		sleep := false
 		for {
 			if sleep {
-				time.Sleep(time.Second * 30)
+				time.Sleep(time.Second * time.Duration(refresh))
 			}
 			sleep = true
 			instances, err := uaaClient.Metrics.GQLGetInstances(ctx)
@@ -141,11 +154,13 @@ func main() {
 				fmt.Printf("error fetching instances: %v\n", err)
 				continue
 			}
-			if len(*instances) == 0 {
+			if found := len(*instances); found == 0 {
 				fmt.Printf("no metrics instances found\n")
+			} else {
+				fmt.Printf("%3d metrics instances found\n", found)
 			}
 			for _, instance := range *instances {
-				fmt.Printf("Instance: %+v\n", instance.GUID)
+				//fmt.Printf("Instance: %+v\n", instance.GUID)
 				_ = rdsCPMetric.Update(ctx, instance)
 				_ = rdsDatabaseConnectionsMetric.Update(ctx, instance)
 				_ = rdsFreeStorageMetric.Update(ctx, instance)
