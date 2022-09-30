@@ -32,7 +32,7 @@ func main() {
 		debugLog = os.Getenv("DEBUG_LOG")
 	}
 
-	if envRegion := os.Getenv("HSDP_REGION"); region != "" {
+	if envRegion := os.Getenv("HSDP_REGION"); envRegion != "" {
 		region = envRegion
 	}
 
