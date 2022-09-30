@@ -73,15 +73,13 @@ func (metrics *Metric) Prune() {
 			continue
 		}
 		prune := time.Duration(time.Duration(metrics.prune) * time.Second).Seconds()
-		if stale := time.Now().Sub(item.lastUpdate).Seconds(); stale > prune { // Prune
+		if stale := time.Since(item.lastUpdate).Seconds(); stale > prune { // Prune
 			deleted := metrics.metricVec.DeletePartialMatch(map[string]string{
 				item.labels.Key(): item.labels.Value(),
 			})
 			fmt.Printf("Deleted %d instance(s): %s:%s, metric: %s (%f > %f)\n", deleted, item.labels.Key(), item.labels.Value(), metrics.name, stale, prune)
 			// Remove from cache
 			metrics.cache.Delete(key)
-		} else {
-			//fmt.Printf("Staleness %f <= %f,  %s -> %s, metric: %s\n", stale, prune, key, item.labels.Value(), metrics.name)
 		}
 	}
 }
@@ -128,8 +126,6 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 		_, stored := metrics.cache.Get(m.Value())
 		if !stored {
 			fmt.Printf("Adding new instance %s %s\n", m.Value(), metrics.name)
-		} else {
-			//fmt.Printf("Updating instance metrics %s %s\n", m.Value(), metrics.name)
 		}
 		metrics.cache.Set(m.Value(), cacheItem{
 			labels:     m,
