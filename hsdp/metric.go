@@ -7,11 +7,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/philips-software/go-hsdp-api/console"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Metric struct {
+	*cache.Cache
 	prometheus.Collector
 	Updater
 	name    string
@@ -111,6 +113,7 @@ func NewMetric(opts ...OptionFunc) (*Metric, error) {
 	})
 	m.Collector = gaugeVec
 	m.Updater = gaugeVec
+	m.Cache = cache.New(720*time.Minute, 1440*time.Minute)
 
 	return m, nil
 }
