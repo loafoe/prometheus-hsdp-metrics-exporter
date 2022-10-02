@@ -33,6 +33,11 @@ func main() {
 	uaaUsername := os.Getenv("UAA_USERNAME")
 	uaaPassword := os.Getenv("UAA_PASSWORD")
 
+	if prune <= refresh {
+		fmt.Printf("prune cannot be less than refresh (%d <= %d), we will have nothing to show\n", prune, refresh)
+		os.Exit(1)
+	}
+
 	if debugLog == "" {
 		debugLog = os.Getenv("DEBUG_LOG")
 	}
