@@ -139,9 +139,11 @@ func main() {
 		hsdp.WithQuery("(s3_objects)  * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
 
 	// RabbitMQ
-	rabbitmqQeuedMessagesTotalMetric, _ := hsdp.NewMetric(
+	rabbitmqQueuedMessagesTotalMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rabbitmq"),
+		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rabbitmq_queued_messages_total"),
 		hsdp.WithHelp("The total number of queued messages"),
 		hsdp.WithQuery("(rabbitmq_queue_messages_total) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"),
@@ -149,6 +151,8 @@ func main() {
 	rabbitmqExchangesTotalMetric, _ := hsdp.NewMetric(
 		hsdp.WithClient(uaaClient),
 		hsdp.WithService("rabbitmq"),
+		hsdp.WithRegion(region),
+		hsdp.WithPrune(prune),
 		hsdp.WithName("rabbitmq_exchanges_total"),
 		hsdp.WithHelp("Total number of exchanges"),
 		hsdp.WithQuery("(rabbitmq_exchangesTotal) * on (hsdp_instance_guid) group_left(hsdp_instance_name)(cf_service_instance_info{hsdp_instance_name=~\".*\"})"))
@@ -161,7 +165,7 @@ func main() {
 	registry.MustRegister(rdsWriteOPSMetrics)
 	registry.MustRegister(s3BucketSizeMetrics)
 	registry.MustRegister(s3ObjectsMetrics)
-	registry.MustRegister(rabbitmqQeuedMessagesTotalMetric)
+	registry.MustRegister(rabbitmqQueuedMessagesTotalMetric)
 	registry.MustRegister(rabbitmqExchangesTotalMetric)
 
 	go func() {
@@ -191,7 +195,7 @@ func main() {
 				_ = rdsWriteOPSMetrics.Update(ctx, instance)
 				_ = s3BucketSizeMetrics.Update(ctx, instance)
 				_ = s3ObjectsMetrics.Update(ctx, instance)
-				_ = rabbitmqQeuedMessagesTotalMetric.Update(ctx, instance)
+				_ = rabbitmqQueuedMessagesTotalMetric.Update(ctx, instance)
 				_ = rabbitmqExchangesTotalMetric.Update(ctx, instance)
 			}
 		}
