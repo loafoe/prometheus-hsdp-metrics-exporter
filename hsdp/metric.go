@@ -47,11 +47,11 @@ type cacheItem struct {
 	lastUpdate time.Time
 }
 
-func (m *metricLabels) Key() string {
+func (m *metricLabels) Label() string {
 	return "hsdp_instance_guid"
 }
 
-func (m *metricLabels) Value() string {
+func (m *metricLabels) Identifier() string {
 	return m.HsdpInstanceGuid
 }
 
@@ -75,9 +75,9 @@ func (metrics *Metric) Prune() {
 		prune := time.Duration(time.Duration(metrics.prune) * time.Second).Seconds()
 		if stale := time.Since(item.lastUpdate).Seconds(); stale > prune { // Prune
 			deleted := metrics.metricVec.DeletePartialMatch(map[string]string{
-				item.labels.Key(): item.labels.Value(),
+				item.labels.Label(): item.labels.Identifier(),
 			})
-			fmt.Printf("Deleted %d instance(s): %s:%s, metric: %s (%f > %f)\n", deleted, item.labels.Key(), item.labels.Value(), metrics.name, stale, prune)
+			fmt.Printf("Deleted %d instance(s): %s:%s, metric: %s (%f > %f)\n", deleted, item.labels.Label(), item.labels.Identifier(), metrics.name, stale, prune)
 			// Remove from cache
 			metrics.cache.Delete(key)
 		}
@@ -123,11 +123,11 @@ func (metrics *Metric) Update(ctx context.Context, instance console.Instance) er
 			metrics.region,
 		).Set(floatValue(value))
 		// Update cache
-		_, stored := metrics.cache.Get(m.Value())
+		_, stored := metrics.cache.Get(m.Identifier())
 		if !stored {
-			fmt.Printf("Adding new instance %s %s\n", m.Value(), metrics.name)
+			fmt.Printf("Adding new instance %s %s\n", m.Identifier(), metrics.name)
 		}
-		metrics.cache.Set(m.Value(), cacheItem{
+		metrics.cache.Set(m.Identifier(), cacheItem{
 			labels:     m,
 			lastUpdate: time.Now(),
 		}, -1)
