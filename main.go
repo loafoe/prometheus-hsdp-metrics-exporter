@@ -28,7 +28,7 @@ func main() {
 	flag.StringVar(&region, "region", "us-east", "The HSDP region to use")
 	flag.IntVar(&listenPort, "port", 8889, "Listen on this port")
 	flag.StringVar(&listenInterface, "iface", "0.0.0.0", "Listen interface for HTTP metrics")
-	flag.IntVar(&refresh, "refresh", 30, "The time to wait between refreshes")
+	flag.IntVar(&refresh, "refresh", 60, "The time to wait between refreshes")
 	flag.IntVar(&prune, "prune", 120, "The time to wait before pruning stale instances")
 
 	flag.Parse()
