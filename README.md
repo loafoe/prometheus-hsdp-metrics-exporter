@@ -25,7 +25,7 @@ export HSDP_REGION=us-east
 ### Run exporter
 
 ```shell
-promethues-hsdp-metrics-exporter -listen 0.0.0.0:8889
+prometheus-hsdp-metrics-exporter -listen 0.0.0.0:8889
 ```
 
 ### Ship to prometheus
