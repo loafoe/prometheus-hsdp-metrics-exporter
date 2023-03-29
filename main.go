@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/loafoe/prometheus-hsdp-metrics-exporter/hsdp"
@@ -16,7 +17,8 @@ import (
 )
 
 var region string
-var listenAddr string
+var listenInterface string
+var listenPort int
 var debugLog string
 var refresh int
 var prune int
@@ -24,8 +26,9 @@ var prune int
 func main() {
 	flag.StringVar(&debugLog, "debuglog", "", "The debug log to dump traffic in")
 	flag.StringVar(&region, "region", "us-east", "The HSDP region to use")
-	flag.StringVar(&listenAddr, "listen", "0.0.0.0:8889", "Listen address for HTTP metrics")
-	flag.IntVar(&refresh, "refresh", 30, "The time to wait between refreshes")
+	flag.IntVar(&listenPort, "port", 8889, "Listen on this port")
+	flag.StringVar(&listenInterface, "iface", "0.0.0.0", "Listen interface for HTTP metrics")
+	flag.IntVar(&refresh, "refresh", 60, "The time to wait between refreshes")
 	flag.IntVar(&prune, "prune", 120, "The time to wait before pruning stale instances")
 
 	flag.Parse()
@@ -41,9 +44,19 @@ func main() {
 	if debugLog == "" {
 		debugLog = os.Getenv("DEBUG_LOG")
 	}
-
 	if envRegion := os.Getenv("HSDP_REGION"); envRegion != "" {
 		region = envRegion
+	}
+	if port := os.Getenv("PORT"); port != "" {
+		parsedPort, err := strconv.ParseInt(port, 10, 64)
+		if err != nil {
+			fmt.Printf("Invalid port: %s\n", port)
+			os.Exit(1)
+		}
+		listenPort = int(parsedPort)
+	}
+	if iface := os.Getenv("INTERFACE"); iface != "" {
+		listenInterface = iface
 	}
 
 	if uaaUsername == "" || uaaPassword == "" {
@@ -203,5 +216,5 @@ func main() {
 
 	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
-	_ = http.ListenAndServe(listenAddr, nil)
+	_ = http.ListenAndServe(fmt.Sprintf("%s:%d", listenInterface, listenPort), nil)
 }
