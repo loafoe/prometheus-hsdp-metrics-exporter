@@ -19,12 +19,12 @@ import (
 var region string
 var listenInterface string
 var listenPort int
-var debugLog string
+var debug bool
 var refresh int
 var prune int
 
 func main() {
-	flag.StringVar(&debugLog, "debuglog", "", "The debug log to dump traffic in")
+	flag.BoolVar(&debug, "debug", false, "Enable debugging")
 	flag.StringVar(&region, "region", "us-east", "The HSDP region to use")
 	flag.IntVar(&listenPort, "port", 8889, "Listen on this port")
 	flag.StringVar(&listenInterface, "iface", "0.0.0.0", "Listen interface for HTTP metrics")
@@ -41,9 +41,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if debugLog == "" {
-		debugLog = os.Getenv("DEBUG_LOG")
-	}
 	if envRegion := os.Getenv("HSDP_REGION"); envRegion != "" {
 		region = envRegion
 	}
@@ -65,10 +62,13 @@ func main() {
 	}
 
 	fmt.Printf("Connecting to HSDP region %s as %s\n", region, uaaUsername)
-	uaaClient, err := console.NewClient(nil, &console.Config{
-		Region:   region,
-		DebugLog: debugLog,
-	})
+	clientConfig := console.Config{
+		Region: region,
+	}
+	if debug {
+		clientConfig.DebugLog = os.Stderr
+	}
+	uaaClient, err := console.NewClient(nil, &clientConfig)
 	if err != nil {
 		fmt.Printf("Error setting up console client: %v\n", err)
 		return
